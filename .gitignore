@@ -5,7 +5,11 @@ build/
 dist/
 wheels/
 *.egg-info
+
+# Files generated for local ml development
 *.env
+*.db
+mlflow-artifacts/
 
 # Virtual environments
 .venv

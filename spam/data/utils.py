@@ -25,7 +25,6 @@ def create_datasets_from_dataframe(
     email["text"] = email.apply(
         lambda row: f"Subject: {row['subject']} [SEP] Body: {row['body']}", axis=1
     ).drop(columns=["subject", "body"])
-    print(email)
 
     # Split off test set
     train_val_df, test_df = train_test_split(

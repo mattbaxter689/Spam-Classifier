@@ -8,6 +8,7 @@ dependencies = [
     "black>=25.12.0",
     "mlflow>=3.8.1",
     "optuna>=4.6.0",
+    "optuna-integration[pytorch-lightning]>=4.6.0",
     "pandas>=2.3.3",
     "pytorch-lightning>=2.6.0",
     "scikit-learn>=1.8.0",

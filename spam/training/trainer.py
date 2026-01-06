@@ -4,7 +4,7 @@ import mlflow
 import mlflow.pytorch
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader, ConcatDataset, Dataset
-from sklearn.metrics import precision_recall_curve
+from sklearn.metrics import precision_recall_curve, recall_score
 from pytorch_lightning.callbacks import EarlyStopping
 from pytorch_lightning.loggers import MLFlowLogger
 from optuna.integration import PyTorchLightningPruningCallback
@@ -19,10 +19,12 @@ class TrainingManager:
         self,
         train_data: Dataset,
         val_data: Dataset,
+        test_data: Dataset,
         experiment_name: str = "spam-classifier",
     ):
         self.train_data = train_data
         self.val_data = val_data
+        self.test_data = test_data
         self.experiment_name = experiment_name
 
     def _objective(self, trial: optuna.Trial) -> float:
@@ -80,11 +82,14 @@ class TrainingManager:
         study.optimize(self._objective, n_trials=n_trials)
         self.best_trial: FrozenTrial = study.best_trial
 
-    def train_final(self):
+    def train_final(self) -> float:
         params = self.best_trial.params
+        threshold = self.best_trial.user_attrs["threshold"]
 
         combined_ds = ConcatDataset([self.train_data, self.val_data])
-        model = SpamClassifier(**params, freeze_encoder=True)
+        model = SpamClassifier(
+            lr=params["lr"], dropout=params["dropout"], freeze_encoder=True
+        )
 
         trainer = pl.Trainer(
             max_epochs=3,
@@ -102,11 +107,28 @@ class TrainingManager:
             DataLoader(combined_ds, batch_size=params["batch_size"], shuffle=True),
         )
 
+        recall = self.evaluate_recall(model, threshold, params["batch_size"])
+
         with mlflow.start_run(run_name="final_model"):
             mlflow.log_params(params)
-            mlflow.log_param("threshold", self.best_trial.user_attrs["threshold"])
+            mlflow.log_param("threshold", threshold)
+            mlflow.log_metric("test_recall", recall)
             mlflow.pytorch.log_model(
                 model,
                 artifact_path="model",
                 registered_model_name="spam_classifier",
             )
+        return recall
+
+    def evaluate_final(
+        self, model: torch.nn.Module, threshold: float, batch_size: int
+    ) -> float:
+        preds, labels = [], []
+        model.eval()
+        with torch.no_grad():
+            for batch in DataLoader(self.test_data, batch_size=batch_size):
+                logits = model(**batch)
+                probs = torch.sigmoid(logits).cpu().numpy()
+                preds.extend((probs >= threshold).astype(int))
+                labels.extend(batch["labels"].cpu().numpy())
+        return float(recall_score(labels, preds))

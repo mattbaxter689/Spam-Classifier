@@ -10,6 +10,8 @@ wheels/
 *.env
 *.db
 mlflow-artifacts/
+*.tfvars
+.terraform/
 
 # Virtual environments
 .venv

@@ -1,19 +1,19 @@
 variable "location" {
   description = "Azure region"
   type        = string
-  default     = "eastus"
+  default     = "canadaeast"
 }
 
 variable "resource_group_name" {
   description = "Resource group name"
   type        = string
-  default     = "rg-ml"
+  default     = "rg-email-ml-1"
 }
 
 variable "workspace_name" {
   description = "Azure ML workspace name"
   type        = string
-  default     = "aml-main-1"
+  default     = "aml-email-1"
 }
 
 variable "acr_name" {

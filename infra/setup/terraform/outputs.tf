@@ -16,14 +16,6 @@ output "storage_account_name" {
   value       = azurerm_storage_account.blob.name
 }
 
-output "datasets_container_name" {
-  value       = azurerm_storage_container.datasets.name
-}
-
-output "mlflow_container_name" {
-  value       = azurerm_storage_container.mlflow.name
-}
-
 # ACR login server
 output "acr_login_server" {
   value       = azurerm_container_registry.acr.login_server

@@ -40,17 +40,17 @@ resource "azurerm_storage_account" "blob" {
 # -------------------------------
 # Blob Containers
 # -------------------------------
-resource "azurerm_storage_container" "datasets" {
-  name                  = "datasets"
-  storage_account_name  = azurerm_storage_account.blob.name
-  container_access_type = "private"
-}
-
-resource "azurerm_storage_container" "mlflow" {
-  name                  = "azureml-mlflow"
-  storage_account_name  = azurerm_storage_account.blob.name
-  container_access_type = "private"
-}
+# resource "azurerm_storage_container" "datasets" {
+#   name                  = "datasets"
+#   storage_account_name  = azurerm_storage_account.blob.name
+#   container_access_type = "private"
+# }
+#
+# resource "azurerm_storage_container" "mlflow" {
+#   name                  = "azureml-mlflow"
+#   storage_account_name  = azurerm_storage_account.blob.name
+#   container_access_type = "private"
+# }
 
 # -------------------------------
 # Key Vault
@@ -95,16 +95,16 @@ resource "azurerm_machine_learning_workspace" "aml" {
 # GPU Compute Cluster
 # -------------------------------
 resource "azurerm_machine_learning_compute_cluster" "cpu" {
-  name                          = "cpu-cluster"
+  name                          = "cpu-dev"
   location                      = azurerm_resource_group.ml.location
   machine_learning_workspace_id = azurerm_machine_learning_workspace.aml.id
-  vm_size                       = "Standard_DS3_v2"
+  vm_size                       = "Standard_D16as_v5"
 
   vm_priority = "Dedicated"
 
   scale_settings {
     min_node_count                    = 0
-    max_node_count                    = 2
+    max_node_count                    = 1
     scale_down_nodes_after_idle_duration = "PT15M"
   }
 

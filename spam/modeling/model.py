@@ -45,7 +45,14 @@ class SpamClassifier(pl.LightningModule):
             input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
         )
         loss = self.loss_fn(logits, batch["labels"])
-        self.log("Train loss", loss)
+        self.log(
+            "train_loss",
+            loss,
+            prog_bar=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
         return loss
 
     def validation_step(
@@ -55,7 +62,14 @@ class SpamClassifier(pl.LightningModule):
             input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
         )
         loss = self.loss_fn(logits, batch["labels"])
-        self.log("Validation loss", loss, prog_bar=True)
+        self.log(
+            "val_loss",
+            loss,
+            prog_bar=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
         return loss
 
     def configure_optimizers(self):

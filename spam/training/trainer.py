@@ -31,7 +31,7 @@ class TrainingManager:
         params = {
             "lr": trial.suggest_float("lr", 1e-5, 3e-5, log=True),
             "dropout": trial.suggest_float("dropout", 0.05, 0.2),
-            "batch_size": trial.suggest_categorical("batch_size", [16, 32]),
+            "batch_size": trial.suggest_categorical("batch_size", [8, 16]),
         }
 
         model = SpamClassifier(
@@ -107,7 +107,7 @@ class TrainingManager:
             DataLoader(combined_ds, batch_size=params["batch_size"], shuffle=True),
         )
 
-        recall = self.evaluate_recall(model, threshold, params["batch_size"])
+        recall = self.evaluate_final(model, threshold, params["batch_size"])
 
         with mlflow.start_run(run_name="final_model"):
             mlflow.log_params(params)

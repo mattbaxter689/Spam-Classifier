@@ -13,7 +13,7 @@ variable "resource_group_name" {
 variable "workspace_name" {
   description = "Azure ML workspace name"
   type        = string
-  default     = "aml-email-1"
+  default     = "aml-email-ml-3"
 }
 
 variable "acr_name" {

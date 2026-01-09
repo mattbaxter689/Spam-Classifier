@@ -98,14 +98,14 @@ resource "azurerm_machine_learning_compute_cluster" "cpu" {
   name                          = "cpu-dev"
   location                      = azurerm_resource_group.ml.location
   machine_learning_workspace_id = azurerm_machine_learning_workspace.aml.id
-  vm_size                       = "Standard_D16as_v5"
+  vm_size                       = "Standard_D16ADS_v5"
 
   vm_priority = "Dedicated"
 
   scale_settings {
     min_node_count                    = 0
     max_node_count                    = 1
-    scale_down_nodes_after_idle_duration = "PT15M"
+    scale_down_nodes_after_idle_duration = "PT60M"
   }
 
   identity {

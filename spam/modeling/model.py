@@ -1,5 +1,5 @@
 import torch
-from torch import nn
+import torch.nn as nn
 import pytorch_lightning as pl
 from transformers import AutoModel
 from pytorch_lightning.utilities.types import STEP_OUTPUT
@@ -8,7 +8,7 @@ from pytorch_lightning.utilities.types import STEP_OUTPUT
 class SpamClassifier(pl.LightningModule):
     def __init__(
         self,
-        model_name: str = "distilbert-base-uncased",
+        encoder: nn.Module,
         lr: float = 2e-5,
         dropout: float = 0.2,
         freeze_encoder: bool = True,
@@ -16,8 +16,7 @@ class SpamClassifier(pl.LightningModule):
 
         super().__init__()
         self.save_hyperparameters()
-        self.encoder = AutoModel.from_pretrained(model_name)
-
+        self._encoder = encoder
         self.lr = lr
 
         if freeze_encoder:
@@ -25,14 +24,14 @@ class SpamClassifier(pl.LightningModule):
                 param.requires_grad = False
             self.encoder.eval()
 
-        hidden = self.encoder.config.hidden_size
+        hidden = encoder.config.hidden_size
         self.classifier = nn.Sequential(nn.Dropout(dropout), nn.Linear(hidden, 1))
         self.loss_fn = nn.BCEWithLogitsLoss()
 
     def forward(
         self, input_ids: torch.Tensor, attention_mask: torch.Tensor
     ) -> torch.Tensor:
-        out = self.encoder(input_ids=input_ids, attention_mask=attention_mask)
+        out = self._encoder(input_ids=input_ids, attention_mask=attention_mask)
         cls = out.last_hidden_state[:, 0]
 
         return self.classifier(cls).squeeze(-1)
@@ -72,9 +71,26 @@ class SpamClassifier(pl.LightningModule):
         )
         return loss
 
+    def test_step(self, batch: dict[str, torch.Tensor], batch_idx: int) -> STEP_OUTPUT:
+        logits = self(
+            input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
+        )
+        loss = self.loss_fn(logits, batch["labels"])
+        self.log(
+            "test_loss",
+            loss,
+            prog_bar=True,
+            on_step=False,
+            on_epoch=True,
+            sync_dist=True,
+        )
+        return loss
+
     def configure_optimizers(self):
-        trainable_params = [p for p in self.parameters() if p.requires_grad]
+        optimizer = torch.optim.AdamW(
+            filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr
+        )
 
-        optimizer = torch.optim.AdamW(trainable_params, lr=self.lr)
-
-        return optimizer
+    @property
+    def encoder(self) -> nn.Module:
+        return self._encoder

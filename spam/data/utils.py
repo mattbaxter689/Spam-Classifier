@@ -1,10 +1,12 @@
 import pandas as pd
+import torch.nn as nn
 from sklearn.model_selection import train_test_split
 from spam.data.dataset import SpamDataset
 
 
 def create_datasets_from_dataframe(
     df: pd.DataFrame,
+    tokenizer: nn.Module,
     text_col: str = "text",
     label_col: str = "label",
     train_fraction: float = 0.7,
@@ -46,21 +48,27 @@ def create_datasets_from_dataframe(
 
     # Create datasets
     train_ds = SpamDataset(
-        train_df,
+        tokenizer=tokenizer,
+        data=train_df,
         text_col=text_col,
         label_col=label_col,
         augment_fn=None,
     )
 
     val_ds = SpamDataset(
-        val_df,
+        tokenizer=tokenizer,
+        data=val_df,
         text_col=text_col,
         label_col=label_col,
         augment_fn=None,
     )
 
     test_ds = SpamDataset(
-        test_df, text_col=text_col, label_col=label_col, augment_fn=None
+        tokenizer=tokenizer,
+        data=test_df,
+        text_col=text_col,
+        label_col=label_col,
+        augment_fn=None,
     )
 
     return train_ds, val_ds, test_ds

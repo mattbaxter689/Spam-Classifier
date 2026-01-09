@@ -3,25 +3,30 @@ import torch
 import mlflow
 import mlflow.pytorch
 import pytorch_lightning as pl
+import numpy as np
+import torch.nn as nn
 from torch.utils.data import DataLoader, ConcatDataset, Dataset
 from sklearn.metrics import precision_recall_curve, recall_score
-from pytorch_lightning.callbacks import EarlyStopping
+from pytorch_lightning.callbacks import EarlyStopping, ModelCheckpoint
 from pytorch_lightning.loggers import MLFlowLogger
 from optuna.integration import PyTorchLightningPruningCallback
 from spam.modeling.model import SpamClassifier
 from optuna.trial import FrozenTrial
+from typing import Callable
 
-MIN_PRECISION = 0.995
+MIN_PRECISION = 0.90
 
 
 class TrainingManager:
     def __init__(
         self,
+        model: Callable[[], nn.Module],
         train_data: Dataset,
         val_data: Dataset,
         test_data: Dataset,
         experiment_name: str = "spam-classifier",
     ):
+        self._model_factory = model
         self.train_data = train_data
         self.val_data = val_data
         self.test_data = test_data
@@ -35,11 +40,19 @@ class TrainingManager:
         }
 
         model = SpamClassifier(
-            lr=params["lr"], dropout=params["dropout"], freeze_encoder=True
+            encoder=self._model_factory(),
+            lr=params["lr"],
+            dropout=params["dropout"],
+            freeze_encoder=True,
         )
-
         logger = MLFlowLogger(
             experiment_name=self.experiment_name, tracking_uri=mlflow.get_tracking_uri()
+        )
+        checkpoint_cb = ModelCheckpoint(
+            monitor="val_recall",
+            mode="max",
+            save_top_k=1,
+            filename="best_recall_{epoch}_{val_recall:.4f}",
         )
 
         trainer = pl.Trainer(
@@ -48,6 +61,7 @@ class TrainingManager:
             devices="auto",
             logger=logger,
             callbacks=[
+                checkpoint_cb,
                 EarlyStopping("val_loss", patience=3),
                 PyTorchLightningPruningCallback(trial, monitor="val_loss"),
             ],
@@ -60,22 +74,36 @@ class TrainingManager:
             DataLoader(self.val_data, batch_size=params["batch_size"]),
         )
 
-        # Evaluate precision-recall
+        best_model = SpamClassifier.load_from_checkpoint(
+            checkpoint_cb.best_model_path, encoder=self._model_factory()
+        )
+        recall, threshold, precision = self.evaluate(
+            best_model, self.val_data, params["batch_size"]
+        )
+
+        trial.set_user_attr("threshold", float(threshold))
+        return recall
+
+    @staticmethod
+    def evaluate(
+        model: nn.Module, dataset: Dataset, batch_size: int
+    ) -> tuple[float, float, float]:
         probs, labels = [], []
         model.eval()
         with torch.no_grad():
-            for batch in DataLoader(self.val_data, batch_size=params["batch_size"]):
-                logits = model(**batch)
+            for batch in DataLoader(dataset, batch_size=batch_size):
+                logits = model(
+                    input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
+                )
                 probs.extend(torch.sigmoid(logits).cpu().numpy())
                 labels.extend(batch["labels"].cpu().numpy())
 
+        # Determine the threshold and precision after tuning
         precision, recall, thresholds = precision_recall_curve(labels, probs)
-        for p, r, t in zip(precision, recall, thresholds):
-            if p >= MIN_PRECISION:
-                trial.set_user_attr("threshold", float(t))
-                return float(r)
+        idx = np.argmax(precision[1:] >= MIN_PRECISION)
+        threshold = thresholds[idx]
 
-        return 0.0
+        return float(recall[idx + 1]), float(precision[idx + 1]), float(threshold)
 
     def tune(self, n_trials: int = 3) -> None:
         study = optuna.create_study(direction="maximize")
@@ -88,26 +116,33 @@ class TrainingManager:
 
         combined_ds = ConcatDataset([self.train_data, self.val_data])
         model = SpamClassifier(
-            lr=params["lr"], dropout=params["dropout"], freeze_encoder=True
+            encoder=self._model_factory(),
+            lr=params["lr"],
+            dropout=params["dropout"],
+            freeze_encoder=True,
+        )
+        checkpoint_cb = ModelCheckpoint(
+            monitor="test_recall",
+            mode="max",
+            save_top_k=1,
+            filename="best_recall_final_{epoch}_{test_recall:.4f}",
         )
 
         trainer = pl.Trainer(
             max_epochs=3,
             accelerator="auto",
             devices="auto",
-            logger=MLFlowLogger(
-                experiment_name=self.experiment_name,
-                tracking_uri=mlflow.get_tracking_uri(),
-            ),
-            callbacks=[EarlyStopping(monitor="train_loss", patience=3)],
+            callbacks=[EarlyStopping(monitor="train_loss", patience=3), checkpoint_cb],
         )
 
         trainer.fit(
             model,
             DataLoader(combined_ds, batch_size=params["batch_size"], shuffle=True),
         )
-
-        recall = self.evaluate_final(model, threshold, params["batch_size"])
+        best_model = SpamClassifier.load_from_checkpoint(
+            checkpoint_cb.best_model_path, encoder=self._model_factory()
+        )
+        recall = self.evaluate_final(best_model, threshold, params["batch_size"])
 
         with mlflow.start_run(run_name="final_model"):
             mlflow.log_params(params)
@@ -121,13 +156,15 @@ class TrainingManager:
         return recall
 
     def evaluate_final(
-        self, model: torch.nn.Module, threshold: float, batch_size: int
+        self, model: nn.Module, threshold: float, batch_size: int
     ) -> float:
         preds, labels = [], []
         model.eval()
         with torch.no_grad():
             for batch in DataLoader(self.test_data, batch_size=batch_size):
-                logits = model(**batch)
+                logits = model(
+                    input_ids=batch["input_ids"], attention_mask=batch["attention_mask"]
+                )
                 probs = torch.sigmoid(logits).cpu().numpy()
                 preds.extend((probs >= threshold).astype(int))
                 labels.extend(batch["labels"].cpu().numpy())

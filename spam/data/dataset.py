@@ -1,14 +1,14 @@
 import pandas as pd
 from torch.utils.data import Dataset
 import torch
+import torch.nn as nn
 from transformers import AutoTokenizer
-
-tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
 
 class SpamDataset(Dataset):
     def __init__(
         self,
+        tokenizer: nn.Module,
         data: pd.DataFrame,
         text_col: str = "text",
         label_col: str = "label",
@@ -23,6 +23,7 @@ class SpamDataset(Dataset):
         augment_fn: Function to perform any processing to text data
         """
         super().__init__()
+        self.tokenizer = tokenizer
         self.data = data
         self.text_col = text_col
         self.label_col = label_col
@@ -41,7 +42,7 @@ class SpamDataset(Dataset):
         if self.augment_fn:
             text = self.augment_fn(text)
 
-        encoding = tokenizer(
+        encoding = self.tokenizer(
             text,
             truncation=True,
             padding="max_length",

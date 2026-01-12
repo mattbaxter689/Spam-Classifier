@@ -24,6 +24,8 @@ resource "azurerm_container_registry" "acr" {
   location            = azurerm_resource_group.ml.location
   sku                 = "Standard"
   admin_enabled       = false
+  public_network_access_enabled = true
+
 }
 
 # -------------------------------
@@ -38,21 +40,6 @@ resource "azurerm_storage_account" "blob" {
 }
 
 # -------------------------------
-# Blob Containers
-# -------------------------------
-# resource "azurerm_storage_container" "datasets" {
-#   name                  = "datasets"
-#   storage_account_name  = azurerm_storage_account.blob.name
-#   container_access_type = "private"
-# }
-#
-# resource "azurerm_storage_container" "mlflow" {
-#   name                  = "azureml-mlflow"
-#   storage_account_name  = azurerm_storage_account.blob.name
-#   container_access_type = "private"
-# }
-
-# -------------------------------
 # Key Vault
 # -------------------------------
 resource "azurerm_key_vault" "kv" {
@@ -62,6 +49,7 @@ resource "azurerm_key_vault" "kv" {
   tenant_id                   = data.azurerm_client_config.current.tenant_id
   sku_name                    = "standard"
   purge_protection_enabled    = false
+  public_network_access_enabled = true
 }
 
 # -------------------------------
@@ -90,28 +78,60 @@ resource "azurerm_machine_learning_workspace" "aml" {
   storage_account_id      = azurerm_storage_account.blob.id
   key_vault_id            = azurerm_key_vault.kv.id
   application_insights_id = azurerm_application_insights.ai.id
+  public_network_access_enabled = true
+}
+
+resource "azurerm_key_vault_access_policy" "ml_identity" {
+  key_vault_id = azurerm_key_vault.kv.id
+  tenant_id    = data.azurerm_client_config.current.tenant_id
+  object_id    = azurerm_user_assigned_identity.aml_identity.principal_id
+
+  secret_permissions = [
+    "Get",
+    "List"
+  ]
 }
 # -------------------------------
 # GPU Compute Cluster
 # -------------------------------
-resource "azurerm_machine_learning_compute_cluster" "cpu" {
-  name                          = "cpu-dev"
-  location                      = azurerm_resource_group.ml.location
-  machine_learning_workspace_id = azurerm_machine_learning_workspace.aml.id
-  vm_size                       = "Standard_D16ADS_v5"
-
-  vm_priority = "Dedicated"
-
-  scale_settings {
-    min_node_count                    = 0
-    max_node_count                    = 1
-    scale_down_nodes_after_idle_duration = "PT60M"
-  }
-
-  identity {
-    type = "SystemAssigned"
-  }
-}
+# resource "azurerm_machine_learning_compute_cluster" "gpu" {
+#   name                          = "gpu-dev"
+#   location                      = azurerm_resource_group.ml.location
+#   machine_learning_workspace_id = azurerm_machine_learning_workspace.aml.id
+#   vm_size                       = "STANDARD_NC16AS_T4_V3"
+#
+#   vm_priority = "Dedicated"
+#
+#   scale_settings {
+#     min_node_count                    = 0
+#     max_node_count                    = 1
+#     scale_down_nodes_after_idle_duration = "PT15M"
+#   }
+#
+#   identity {
+#     type = "SystemAssigned"
+#   }
+# }
+#
+# resource "azurerm_machine_learning_compute_cluster" "cpu" {
+#    name = "cpu-dev"
+#    location = azurerm_resource_group.ml.location
+#    machine_learning_workspace_id = azurerm_machine_learning_workspace.aml.id
+#    vm_size = "STANDARD_E16s_v3"
+#
+#    vm_priority = "Dedicated"
+#
+#    scale_settings {
+#     min_node_count                    = 0
+#     max_node_count                    = 1
+#     scale_down_nodes_after_idle_duration = "PT15M"
+#   }
+#
+#   identity {
+#     type = "SystemAssigned"
+#   }
+#
+# }
 # -------------------------------
 # Role Assignments
 # -------------------------------

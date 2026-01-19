@@ -36,6 +36,7 @@ class TrainingManager:
         params = {
             "lr": trial.suggest_float("lr", 1e-5, 3e-5, log=True),
             "dropout": trial.suggest_float("dropout", 0.05, 0.2),
+            "threshold": 0.5,
             "batch_size": trial.suggest_categorical("batch_size", [8, 16]),
         }
 

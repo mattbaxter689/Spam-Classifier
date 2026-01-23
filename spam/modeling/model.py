@@ -21,7 +21,7 @@ class SpamClassifier(pl.LightningModule):
     ) -> None:
 
         super().__init__()
-        self.save_hyperparameters()
+        self.save_hyperparameters(ignore=["encoder"])
         self._encoder = encoder
         self.lr = params.lr
         self.threshold = params.threshold
@@ -136,7 +136,7 @@ class SpamClassifier(pl.LightningModule):
         self.log_dict(asdict(metrics), prog_bar=True)
         self.test_acc.reset()
         self.test_prec.reset()
-        self.test_acc.reset()
+        self.test_rec.reset()
 
     def configure_optimizers(self):
         optimizer = torch.optim.AdamW(

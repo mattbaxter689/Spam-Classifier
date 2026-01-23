@@ -7,6 +7,7 @@ class ModelHyperParams:
     lr: float
     dropout: float
     threshold: float
+    batch_size: int
 
 
 @dataclass
@@ -18,6 +19,6 @@ class ValidationMetrics:
 
 @dataclass
 class TestMetrics:
-    test_accuracy: torch.Tensor
-    test_precision: torch.Tensor
-    test_recall: torch.Tensor
+    test_accuracy: torch.Tensor | float
+    test_precision: torch.Tensor | float
+    test_recall: torch.Tensor | float

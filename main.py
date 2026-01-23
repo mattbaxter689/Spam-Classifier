@@ -2,7 +2,7 @@
 import mlflow
 from transformers import AutoTokenizer, AutoModel
 from spam.data.utils import create_datasets_from_dataframe
-from spam.training.trainer import TrainingManager
+from spam.training.train_manager import TrainingManager
 from spam.registry.register import ChampionChallengerManager
 import pandas as pd
 import torch.nn as nn

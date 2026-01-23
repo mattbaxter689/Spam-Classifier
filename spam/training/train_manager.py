@@ -153,7 +153,7 @@ class TrainingManager:
     def train_final(self) -> tuple[TestMetrics, str]:
         assert (
             self.threshold is not None
-        ), "Threshold must be tune first. Please tune the threshold"
+        ), "Threshold must be tuned first. Please tune the threshold"
 
         self.best_params.threshold = self.threshold
 

@@ -10,6 +10,15 @@ wheels/
 *.env
 *.db
 mlflow-artifacts/
+*.tfvars
+.terraform/
+config.json
+
+.terraform/
+.tfstate
+*.tfstate
+.tfstate.
+*.backup
 
 # Virtual environments
 .venv

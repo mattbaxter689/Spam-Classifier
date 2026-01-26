@@ -8,12 +8,8 @@ from transformers import AutoTokenizer
 class SpamDataset(Dataset):
     def __init__(
         self,
-        tokenizer: nn.Module,
         data: pd.DataFrame,
-        text_col: str = "text",
         label_col: str = "label",
-        max_length: int = 128,
-        augment_fn=None,
     ) -> None:
         """
         data: pandas dataframe containing the data to pass
@@ -23,12 +19,8 @@ class SpamDataset(Dataset):
         augment_fn: Function to perform any processing to text data
         """
         super().__init__()
-        self.tokenizer = tokenizer
         self.data = data
-        self.text_col = text_col
         self.label_col = label_col
-        self.max_length = max_length
-        self.augment_fn = augment_fn
 
     def __len__(self):
         return len(self.data)
@@ -36,22 +28,8 @@ class SpamDataset(Dataset):
     def __getitem__(self, index):
         row = self.data.iloc[index]
 
-        text = row[self.text_col]
-        label = row[self.label_col]
-
-        if self.augment_fn:
-            text = self.augment_fn(text)
-
-        encoding = self.tokenizer(
-            text,
-            truncation=True,
-            padding="max_length",
-            max_length=self.max_length,
-            return_tensors="pt",
-        )
-
         return {
-            "input_ids": encoding["input_ids"].squeeze(0),
-            "attention_mask": encoding["attention_mask"].squeeze(0),
-            "labels": torch.tensor(label, dtype=torch.float),
+            "input_ids": torch.tensor(row["input_ids"], dtype=torch.long),
+            "attention_mask": torch.tensor(row["attention_mask"], dtype=torch.long),
+            "labels": torch.tensor(row["label"], dtype=torch.float),
         }

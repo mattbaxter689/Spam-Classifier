@@ -13,24 +13,22 @@ def encoder_factory() -> nn.Module:
 
 
 def main():
-    print("hello")
     # Update the server to reference workspace mlflow.Set with env var and reference
-    # mlflow.set_tracking_uri("http://127.0.0.1:5000")
-    #
-    # # reference the already tokenized dataset on blob storage
-    # data = pd.read_csv("dataset/Enron.csv")
-    #
-    # tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
-    #
-    # train, val, test = create_datasets_from_dataframe(data, tokenizer)
-    #
-    # manager = TrainingManager(encoder_factory, train, val, test)
-    # manager.tune()
-    # manager.tune_threshold()
-    # test_metrics, run_id = manager.train_final()
-    # post_fit_manager = ChampionChallengerManager(challenger_metrics=test_metrics)
-    # post_fit_manager.promote()
-    #
+    mlflow.set_tracking_uri("http://127.0.0.1:5000")
+
+    # reference the already tokenized dataset on blob storage
+    data = pd.read_csv("dataset/Enron.csv")
+
+    tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
+
+    train, val, test = create_datasets_from_dataframe(data, tokenizer)
+
+    manager = TrainingManager(encoder_factory, train, val, test)
+    manager.tune()
+    manager.tune_threshold()
+    test_metrics, run_id = manager.train_final()
+    post_fit_manager = ChampionChallengerManager(challenger_metrics=test_metrics)
+    post_fit_manager.promote()
 
 
 if __name__ == "__main__":

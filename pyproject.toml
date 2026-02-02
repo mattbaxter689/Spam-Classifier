@@ -1,13 +1,18 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "spam-classifier"
 version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
-requires-python = ">=3.14"
+requires-python = ">=3.12"
 dependencies = [
     "argparse>=1.4.0",
     "azure-ai-ml>=1.31.0",
     "azure-identity>=1.25.1",
+    "azureml-mlflow>=1.60.0",
     "black>=25.12.0",
     "mlflow>=3.8.1",
     "optuna>=4.6.0",
@@ -18,3 +23,11 @@ dependencies = [
     "scipy>=1.16.3",
     "transformers>=4.57.3",
 ]
+
+# [tool.setuptools]
+# packages = ["spam"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["spam*"]
+

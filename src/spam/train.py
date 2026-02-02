@@ -25,12 +25,12 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
     train, val, test = create_datasets_from_dataframe(data, tokenizer)
-    # manager = TrainingManager(encoder_factory, train, val, test)
-    # manager.tune()
-    # manager.tune_threshold()
-    # test_metrics, run_id = manager.train_final()
-    # post_fit_manager = ChampionChallengerManager(challenger_metrics=test_metrics)
-    # post_fit_manager.promote()
+    manager = TrainingManager(encoder_factory, train, val, test)
+    manager.tune()
+    manager.tune_threshold()
+    test_metrics, run_id = manager.train_final()
+    post_fit_manager = ChampionChallengerManager(challenger_metrics=test_metrics)
+    post_fit_manager.promote()
 
 
 if __name__ == "__main__":

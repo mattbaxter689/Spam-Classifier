@@ -4,7 +4,7 @@ CONTAINER_NAME=mlflow
 DB_PATH=$(PWD)/mlflow.db
 ARTIFACTS_PATH=$(PWD)/mlflow-artifacts
 
-.PHONY: up down logs clean status
+.PHONY: up down logs clean status environment job
 
 up:
 	@mkdir -p $(ARTIFACTS_PATH)
@@ -35,3 +35,8 @@ clean: down
 	rm -f $(DB_PATH)
 	rm -rf $(ARTIFACTS_PATH)
 
+environment:
+	uv run create_aml_environment.py
+
+job:
+	uv run submit_job.py

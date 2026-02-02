@@ -23,3 +23,4 @@ config.json
 # Virtual environments
 .venv
 tokenize_data.py
+set_vars.sh

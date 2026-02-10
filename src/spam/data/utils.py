@@ -1,7 +1,10 @@
 import pandas as pd
 import torch.nn as nn
 from sklearn.model_selection import train_test_split
+from sklearn import set_config
 from spam.data.dataset import SpamDataset
+
+set_config(transform_output="pandas")
 
 
 def create_datasets_from_dataframe(
@@ -26,7 +29,7 @@ def create_datasets_from_dataframe(
     train_val_df, test_df = train_test_split(
         email,
         test_size=test_fraction,
-        stratify=df[label_col],
+        stratify=email[label_col],
         random_state=random_state,
     )
 

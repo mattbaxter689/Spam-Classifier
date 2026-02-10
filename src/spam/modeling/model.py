@@ -1,7 +1,6 @@
 import torch
 import torch.nn as nn
 import pytorch_lightning as pl
-from transformers import AutoModel
 from pytorch_lightning.utilities.types import STEP_OUTPUT
 from torchmetrics.classification import BinaryAccuracy, BinaryPrecision, BinaryRecall
 from spam.data_configs.data_config import (
@@ -39,12 +38,12 @@ class SpamClassifier(pl.LightningModule):
         self.loss_fn = nn.BCEWithLogitsLoss()
 
         # Add in the metrics. We want separate Validation and Test metrics
-        self.val_acc = BinaryAccuracy(threshold=self.threshold)
-        self.val_prec = BinaryPrecision(threshold=self.threshold)
-        self.val_rec = BinaryRecall(threshold=self.threshold)
-        self.test_acc = BinaryAccuracy(threshold=self.threshold)
-        self.test_prec = BinaryPrecision(threshold=self.threshold)
-        self.test_rec = BinaryRecall(threshold=self.threshold)
+        self.val_acc = BinaryAccuracy()
+        self.val_prec = BinaryPrecision()
+        self.val_rec = BinaryRecall()
+        self.test_acc = BinaryAccuracy()
+        self.test_prec = BinaryPrecision()
+        self.test_rec = BinaryRecall()
 
     def set_threshold(self, threshold: float) -> None:
         self.threshold = threshold
@@ -94,7 +93,7 @@ class SpamClassifier(pl.LightningModule):
         self.val_acc.update(probs, batch["labels"])
         self.val_prec.update(probs, batch["labels"])
         self.val_rec.update(probs, batch["labels"])
-        self.log("val_loss", loss, on_epoch=True, prog_bar=True)
+        self.log("val_loss", loss, on_epoch=True)
 
     def on_validation_epoch_end(self) -> None:
         metrics = ValidationMetrics(
@@ -105,7 +104,7 @@ class SpamClassifier(pl.LightningModule):
         self.log_dict(asdict(metrics), prog_bar=True)
         self.val_acc.reset()
         self.val_prec.reset()
-        self.val_acc.reset()
+        self.val_rec.reset()
 
     def test_step(self, batch: dict[str, torch.Tensor], batch_idx: int) -> STEP_OUTPUT:
         logits = self(
@@ -121,7 +120,6 @@ class SpamClassifier(pl.LightningModule):
         self.log(
             "test_loss",
             loss,
-            prog_bar=True,
             on_step=False,
             on_epoch=True,
         )
@@ -139,9 +137,15 @@ class SpamClassifier(pl.LightningModule):
         self.test_rec.reset()
 
     def configure_optimizers(self):
-        optimizer = torch.optim.AdamW(
+        return torch.optim.AdamW(
             filter(lambda p: p.requires_grad, self.parameters()), lr=self.lr
         )
+
+    def on_save_checkpoint(self, checkpoint):
+        checkpoint["threshold"] = self.threshold
+
+    def on_load_checkpoint(self, checkpoint):
+        self.threshold = checkpoint.get("threshold", 0.5)
 
     @property
     def encoder(self) -> nn.Module:

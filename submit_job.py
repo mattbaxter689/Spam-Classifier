@@ -4,7 +4,6 @@ from pathlib import Path
 from azure.ai.ml import MLClient, command, Input
 from azure.ai.ml.constants import AssetTypes
 from azure.identity import DefaultAzureCredential
-from azure.ai.ml.entities import Environment
 
 
 def require_env(name: str) -> str:

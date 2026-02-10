@@ -1,9 +1,7 @@
-import mlflow
 from mlflow.client import MlflowClient
 from mlflow.exceptions import RestException
 from mlflow.entities.model_registry import ModelVersion
 from spam.data_configs.data_config import TestMetrics
-from torch import threshold_
 
 
 class ChampionChallengerManager:
@@ -40,7 +38,7 @@ class ChampionChallengerManager:
 
             champ_metrics = self.client.get_run(champion_run_id).data.metrics
             champ_recall = champ_metrics.get("test_recall", 0.0)
-        except (RestException, ValueError, IndexError) as e:
+        except (RestException, ValueError, IndexError):
             latest = self.client.get_latest_versions(self.model_name)[0]
             self.client.set_registered_model_alias(
                 self.model_name, "champion", latest.version

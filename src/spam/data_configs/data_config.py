@@ -6,8 +6,8 @@ import torch
 class ModelHyperParams:
     lr: float
     dropout: float
-    threshold: float
     batch_size: int
+    threshold: float | None = None
 
 
 @dataclass

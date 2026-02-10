@@ -3,7 +3,6 @@ import torch
 import mlflow
 import mlflow.pytorch
 import pytorch_lightning as pl
-import numpy as np
 import torch.nn as nn
 from dataclasses import asdict
 from torch.utils.data import DataLoader, ConcatDataset, Dataset
@@ -15,8 +14,6 @@ from spam.modeling.model import SpamClassifier
 from spam.data_configs.data_config import ModelHyperParams, TestMetrics
 from optuna.trial import FrozenTrial
 from typing import Callable
-
-MIN_PRECISION = 0.90
 
 
 class TrainingManager:
@@ -78,10 +75,10 @@ class TrainingManager:
             DataLoader(
                 self.train_data,
                 batch_size=params.batch_size,
-                num_workers=4,
+                num_workers=2,
                 shuffle=True,
             ),
-            DataLoader(self.val_data, batch_size=params.batch_size, num_workers=4),
+            DataLoader(self.val_data, batch_size=params.batch_size, num_workers=2),
         )
 
         best_model = SpamClassifier.load_from_checkpoint(
@@ -90,7 +87,7 @@ class TrainingManager:
         trainer.validate(
             model=best_model,
             dataloaders=DataLoader(
-                self.val_data, batch_size=params.batch_size, num_workers=4
+                self.val_data, batch_size=params.batch_size, num_workers=2
             ),
         )
         recall = trainer.callback_metrics["val_recall"].item()
@@ -116,20 +113,29 @@ class TrainingManager:
         return torch.cat(probs), torch.cat(labels)
 
     def select_threshold_from_pr(
-        self, y_true: torch.Tensor, y_prob: torch.Tensor, safety_margin: float = 0.02
+        self,
+        y_true: torch.Tensor,
+        y_prob: torch.Tensor,
+        target_precision: float = 0.90,
+        lambda_penalty: float = 0.5,
     ) -> float:
 
         precision, recall, thresholds = precision_recall_curve(
             y_true.numpy(), y_prob.numpy()
         )
 
-        target = MIN_PRECISION + safety_margin
-        valid = precision[:-1] >= target
+        best_score = -float("inf")
+        best_threshold = 0.5
 
-        if not valid.any():
-            return 1.0
-        best_idx = np.argmax(recall[:-1][valid])
-        return thresholds[valid][best_idx]
+        for p, r, t in zip(precision[:-1], recall[:-1], thresholds):
+            penalty = max(0.0, target_precision - p)
+            score = r - lambda_penalty * penalty
+
+            if score > best_score:
+                best_score = score
+                best_threshold = t
+
+        return float(best_threshold)
 
     def tune(self, n_trials: int = 3) -> None:
         study = optuna.create_study(direction="maximize")
@@ -150,7 +156,7 @@ class TrainingManager:
 
         self.threshold = self.select_threshold_from_pr(labels, probs)
 
-    def train_final(self) -> tuple[TestMetrics, str]:
+    def train_final(self) -> TestMetrics:
         assert (
             self.threshold is not None
         ), "Threshold must be tuned first. Please tune the threshold"
@@ -187,11 +193,13 @@ class TrainingManager:
             encoder=self._model_factory(),
             params=self.best_params,
         )
+        best_model.set_threshold(self.threshold)
+        trainer.save_checkpoint("spam_final_model.ckpt")
 
         trainer.test(
             best_model,
             dataloaders=DataLoader(
-                self.test_data, batch_size=self.best_params.batch_size, num_workers=4
+                self.test_data, batch_size=self.best_params.batch_size, num_workers=2
             ),
         )
         test_metrics = TestMetrics(
@@ -203,9 +211,8 @@ class TrainingManager:
         with mlflow.start_run(run_name="final_model") as run:
             mlflow.log_metrics(asdict(test_metrics))
             mlflow.log_metrics(asdict(self.best_params))
-            mlflow.pytorch.log_model(
-                model,
-                artifact_path="spam_model",
-                registered_model_name="SpamClasifier",
-            )
-        return test_metrics, run.info.run_id
+            mlflow.pytorch.log_model(pytorch_model=best_model, artifact_path="model")
+            run_uri = f"runs:/{run.info.run_id}/model"
+            mlflow.register_model(run_uri, "SpamClassifier")
+
+        return test_metrics

@@ -1,10 +1,10 @@
-from azure.ai.ml import MLClient, command, Input
-from azure.ai.ml.constants import AssetTypes
+from azure.ai.ml import MLClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml.entities import Environment
 import os
 import json
 from pathlib import Path
+
 
 def require_env(name: str) -> str:
     value = os.getenv(name)
@@ -34,7 +34,7 @@ job_env = Environment(
     tags={"project": "spam-classifier"},
     # conda_file=os.path.join("environment", "conda.yaml"),
     # image="mcr.microsoft.com/azureml/openmpi4.1.0-ubuntu22.04:latest",
-    image=environment_image
+    image=environment_image,
 )
 
 # Register environment (create_or_update is idempotent)

@@ -1,0 +1,74 @@
+name: Azure ML Training Job
+
+on:
+  push:
+    branches: [ master ]
+  workflow_dispatch:
+
+jobs:
+  train:
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+  
+    # -----------------------------
+    # Python setup
+    # -----------------------------
+    - name: Setup Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: "3.11"
+  
+    - name: Install tooling
+      run: |
+        python -m pip install --upgrade pip
+        pip install black isort
+        pip install azure-ai-ml azure-identity
+  
+    # -----------------------------
+    # Format & clean imports
+    # -----------------------------
+    - name: Format code (black)
+      run: black .
+  
+    - name: Sort imports (isort)
+      run: isort .
+  
+    # - name: Check formatting
+    #   run: |
+    #     black --check .
+    #     isort --check-only .
+  
+    # -----------------------------
+    # Azure Login
+    # -----------------------------
+    - name: Azure login
+      uses: azure/login@v2
+      with:
+        client-id: ${{ secrets.AZURE_CLIENT_ID }}
+        tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+        subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+  
+    # -----------------------------
+    # Run Azure ML submission script
+    # -----------------------------
+    - name: Submit Azure ML job
+      env:
+        AML_COMPUTE: ${{ secrets.AML_COMPUTE }}
+        AML_ENVIRONMENT: ${{ secrets.AML_ENVIRONMENT }}
+        AML_ENV_IMAGE: ${{ secrets.AML_ENV_IMAGE }}
+        AML_TRAIN: ${{ secrets.AML_TRAIN }}
+        HF_TOKEN: ${{ secrets.HF_TOKEN }}
+  
+        subscription_id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+        resource_group: ${{ secrets.AZURE_RESOURCE_GROUP }}
+        workspace_name: ${{ secrets.AZURE_WORKSPACE }}
+  
+      run: |
+        python scripts/submit_job.py

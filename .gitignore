@@ -19,6 +19,7 @@ config.json
 *.tfstate
 .tfstate.
 *.backup
+.terraform.tfstate.lock.info
 
 # Virtual environments
 .venv

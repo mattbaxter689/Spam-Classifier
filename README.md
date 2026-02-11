@@ -46,3 +46,16 @@ To make it easy to run these commands, the `Makefile` allows us to easily spin u
 make environment
 make job
 ```
+
+# Design Choice
+
+For this project, I wanted to make a more strict choice in terms of design of the model. When using any form of deep learning or machine learning in business
+applications, there are certain choices that needs to be made especially regarding optimizing for precision vs recall. In this case, I wanted to have a model that maximized recall during the tuning phase, subjecting the precision to a minimal value. Since misclassifying a normal email as spam could have very severe impact, we want to be able to catch as many spam emails as we can. Given this, we want a minimal acceptable precision, where we can then tune to find the best available recall.
+
+# Project Notes
+
+Going through this project, I have a few comments / issues surrounding this, mostly related to Azure itself.
+
+* If I would create a compute environment again from scratch, I would use a custom docker image rather than what I had done. This would be much easier I feel than creating something, then using the ACR registry to create the environment again, etc. Many manual steps are needed here and just in general is frustrating.
+* Azure workspaces making use of mlflow 2.7.1 and using the stages rather than aliasing is slightly frustrating. Understandably, it has been around for some time and I don't see it changing to the new methods any time soon. Part of me does wish it was similar to GCP Vertex where workspaces can choose to spin up mlflow and specify it's version. Regardless, Mlflow being automatically integrated it a large helper
+* I am definitely getting more comfortable with torch at this point now which is good. It feels good. I always understood the theory, but the application of it definitely feels good. Torch lightning is also very handy to work with. The integrated metrics and logging is quite nice to have included in this

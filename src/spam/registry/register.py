@@ -45,7 +45,7 @@ class ChampionChallengerManager:
                 return v
         return None
 
-    def promote(self, precision_threshold: float = 0.7) -> None:
+    def promote(self, precision_threshold: float = 0.9) -> None:
         """Promote challenger to Production if it beats current champion."""
         champion_version = self._get_production_model()
 

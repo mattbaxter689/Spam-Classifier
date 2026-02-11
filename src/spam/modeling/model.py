@@ -12,6 +12,12 @@ from dataclasses import asdict
 
 
 class SpamClassifier(pl.LightningModule):
+    """
+    Email spam classification using Lightning to tune
+    distilbert-base-uncased model to email spam
+    classification
+    """
+
     def __init__(
         self,
         encoder: nn.Module,

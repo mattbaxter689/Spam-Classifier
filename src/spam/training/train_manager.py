@@ -17,6 +17,11 @@ from typing import Callable
 
 
 class TrainingManager:
+    """
+    Class to help with optuna tuning and
+    general model fits
+    """
+
     def __init__(
         self,
         model: Callable[[], nn.Module],
@@ -33,11 +38,14 @@ class TrainingManager:
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def _objective(self, trial: optuna.Trial) -> float:
+        """
+        Optuna objective study
+        """
         params = ModelHyperParams(
             lr=trial.suggest_float("lr", 1e-5, 3e-5, log=True),
-            dropout=trial.suggest_float("dropout", 0.05, 0.2),
+            dropout=trial.suggest_float("dropout", 0.05, 0.4),
             threshold=0.5,
-            batch_size=trial.suggest_categorical("batch_size", [2, 4]),
+            batch_size=trial.suggest_categorical("batch_size", [16, 32, 64]),
         )
         encoder = self._model_factory()
 
@@ -119,6 +127,9 @@ class TrainingManager:
         target_precision: float = 0.90,
         lambda_penalty: float = 0.5,
     ) -> float:
+        """
+        Helper function to help select the best threshold from the precision recall curve
+        """
 
         precision, recall, thresholds = precision_recall_curve(
             y_true.numpy(), y_prob.numpy()
@@ -146,6 +157,9 @@ class TrainingManager:
         self.best_checkpoint = self.best_trial.user_attrs["best_checkpoint"]
 
     def tune_threshold(self) -> None:
+        """
+        Load best checkpoint model and tune threshold
+        """
         model = SpamClassifier.load_from_checkpoint(
             self.best_checkpoint, encoder=self._model_factory(), params=self.best_params
         ).to(self.device)

@@ -1,6 +1,4 @@
-import json
 import os
-from pathlib import Path
 from azure.ai.ml import MLClient, command, Input
 from azure.ai.ml.constants import AssetTypes
 from azure.identity import DefaultAzureCredential
@@ -13,9 +11,11 @@ def require_env(name: str) -> str:
     return value
 
 
-config_path = Path(__file__).parent / "config.json"
-with open(config_path) as f:
-    ws_cfg = json.load(f)
+# NOTE: This is an example if you have a config.json file from Azure. Otherwise,
+# use a service principal
+# config_path = Path(__file__).parent / "config.json"
+# with open(config_path) as f:
+#     ws_cfg = json.load(f)
 
 compute = require_env("AML_COMPUTE")
 environment_name = require_env("AML_ENVIRONMENT")
@@ -24,9 +24,9 @@ environment_image = require_env("AML_ENV_IMAGE")
 
 ml_client = MLClient(
     credential=DefaultAzureCredential(),
-    subscription_id=ws_cfg["subscription_id"],
-    resource_group_name=ws_cfg["resource_group"],
-    workspace_name=ws_cfg["workspace_name"],
+    subscription_id=require_env("subscription_id"),
+    resource_group_name=require_env("resource_group"),
+    workspace_name=require_env("workspace_name"),
 )
 
 # Define the job

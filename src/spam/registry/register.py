@@ -4,6 +4,12 @@ from spam.data_configs.data_config import TestMetrics
 
 
 class ChampionChallengerManager:
+    """
+    Helper class that controls the promotion logic for
+    Champion/Challenger models. This is more as am example,
+    and can be optimized far better than what is here
+    """
+
     def __init__(
         self,
         challenger_metrics: TestMetrics,

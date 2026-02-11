@@ -2,8 +2,6 @@ from azure.ai.ml import MLClient
 from azure.identity import DefaultAzureCredential
 from azure.ai.ml.entities import Environment
 import os
-import json
-from pathlib import Path
 
 
 def require_env(name: str) -> str:
@@ -13,18 +11,18 @@ def require_env(name: str) -> str:
     return value
 
 
-config_path = Path(__file__).parent / "config.json"
-with open(config_path) as f:
-    ws_cfg = json.load(f)
+# config_path = Path(__file__).parent / "config.json"
+# with open(config_path) as f:
+#     ws_cfg = json.load(f)
 
 environment_name = require_env("AML_ENVIRONMENT")
 environment_image = require_env("AML_ENV_IMAGE")
 
 ml_client = MLClient(
     credential=DefaultAzureCredential(),
-    subscription_id=ws_cfg["subscription_id"],
-    resource_group_name=ws_cfg["resource_group"],
-    workspace_name=ws_cfg["workspace_name"],
+    subscription_id=require_env("subscription_id"),
+    resource_group_name=require_env("resource_group"),
+    workspace_name=require_env("workspace_name"),
 )
 
 # After connecting to the client, we need to create the environment

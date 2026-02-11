@@ -23,12 +23,8 @@ def main():
     print("Data path:", args.data_path)
 
     # reference the already tokenized dataset on blob storage
+    # this is mounted at run time
     data = pd.read_parquet(f"{args.data_path}/Enron_tokenized.parquet")
-    # small sample here just to test functionality
-    data = data.sample(n=101)
-    print(data["label"].value_counts())
-
-    # tokenizer = AutoTokenizer.from_pretrained("distilbert-base-uncased")
 
     train, val, test = create_datasets_from_dataframe(data)
     manager = TrainingManager(encoder_factory, train, val, test)

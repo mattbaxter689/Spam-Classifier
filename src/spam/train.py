@@ -34,8 +34,10 @@ def main():
     manager = TrainingManager(encoder_factory, train, val, test)
     manager.tune(n_trials=1)
     manager.tune_threshold()
-    test_metrics = manager.train_final()
-    post_fit_manager = ChampionChallengerManager(challenger_metrics=test_metrics)
+    test_metrics, run_id = manager.train_final()
+    post_fit_manager = ChampionChallengerManager(
+        challenger_metrics=test_metrics, challenger_run_id=run_id
+    )
     post_fit_manager.promote()
 
 

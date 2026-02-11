@@ -1,64 +1,87 @@
 from mlflow.client import MlflowClient
-from mlflow.exceptions import RestException
 from mlflow.entities.model_registry import ModelVersion
 from spam.data_configs.data_config import TestMetrics
 
 
 class ChampionChallengerManager:
     def __init__(
-        self, challenger_metrics: TestMetrics, model_name: str = "SpamClassifier"
+        self,
+        challenger_metrics: TestMetrics,
+        challenger_run_id: str,
+        model_name: str = "SpamClassifier",
+        threshold: float = 0.01,
     ) -> None:
         self.challenger_metrics = challenger_metrics
+        self.challenger_run_id = challenger_run_id
         self.model_name = model_name
+        self.threshold = threshold
         self.client = MlflowClient()
 
-        self._set_challenger_model()
+        # Register the challenger version in the registry
+        self.challenger_version = self._get_latest_version()
 
-    def _set_challenger_model(self) -> None:
-        latest_version = self._get_latest_version()
-        self.client.set_registered_model_alias(
-            self.model_name, "challenger", latest_version.version
+        # Assign it to Staging stage
+        self.client.transition_model_version_stage(
+            name=self.model_name,
+            version=self.challenger_version.version,
+            stage="Staging",
         )
 
     def _get_latest_version(self) -> ModelVersion:
-        versions = self.client.get_latest_versions(self.model_name)
-        if not versions:
-            raise RuntimeError("No model versions found in registry")
-        return versions[0]
+        versions = self.client.search_model_versions(f"name='{self.model_name}'")
+        return max(versions, key=lambda v: int(v.version))
 
-    def promote(self, threshold: float = 0.01) -> None:
-        try:
-            champion = self.client.get_model_version_by_alias(
-                self.model_name, "champion"
+    def _get_production_model(self) -> ModelVersion | None:
+        """Fetch current Production (champion) version."""
+        versions = self.client.search_model_versions(f"name='{self.model_name}'")
+        for v in versions:
+            if v.current_stage == "Production":
+                return v
+        return None
+
+    def promote(self, precision_threshold: float = 0.7) -> None:
+        """Promote challenger to Production if it beats current champion."""
+        champion_version = self._get_production_model()
+
+        if champion_version is None:
+            # No champion yet → promote challenger
+            self.client.transition_model_version_stage(
+                name=self.model_name,
+                version=self.challenger_version.version,
+                stage="Production",
             )
-            champion_run_id: str | None = champion.run_id
-
-            if champion_run_id is None:
-                raise ValueError("Champion model has no run_id")
-
-            champ_metrics = self.client.get_run(champion_run_id).data.metrics
-            champ_recall = champ_metrics.get("test_recall", 0.0)
-        except (RestException, ValueError, IndexError):
-            latest = self.client.get_latest_versions(self.model_name)[0]
-            self.client.set_registered_model_alias(
-                self.model_name, "champion", latest.version
+            print(
+                f"No existing champion. Promoted version {self.challenger_version.version} as champion."
             )
-            print(f"No champion found. Promoted version {latest.version} as champion.")
             return
 
-        latest = self._get_latest_version()
-        if self.challenger_metrics.test_precision < 0.90:
-            print(
-                f"Challenger model does not meet min precision threshold"
-                f"(precision {self.challenger_metrics.test_precision:.4f} < 0.90"
-            )
+        # Fetch champion metrics
+        champ_run_id = champion_version.run_id
+        champ_metrics = self.client.get_run(champ_run_id).data.metrics
+        champ_recall = champ_metrics.get("test_recall", 0.0)
 
-        if self.challenger_metrics.test_recall > champ_recall + threshold:
-            self.client.set_registered_model_alias(
-                self.model_name, "champion", latest.version
+        # Check challenger metrics
+        if self.challenger_metrics.test_precision < precision_threshold:
+            print(
+                f"Challenger model does not meet min precision threshold "
+                f"(precision {self.challenger_metrics.test_precision:.4f} < 0.90)"
+            )
+            return
+
+        # Compare recall for promotion
+        if self.challenger_metrics.test_recall > champ_recall + self.threshold:
+            # Demote old champion to Archived (optional)
+            self.client.transition_model_version_stage(
+                name=self.model_name, version=champion_version.version, stage="Archived"
+            )
+            # Promote challenger
+            self.client.transition_model_version_stage(
+                name=self.model_name,
+                version=self.challenger_version.version,
+                stage="Production",
             )
             print(
-                f"Promoted version {latest.version} as new champion "
+                f"Promoted version {self.challenger_version.version} as new champion "
                 f"(recall {self.challenger_metrics.test_recall:.4f} > {champ_recall:.4f})"
             )
         else:

@@ -156,7 +156,7 @@ class TrainingManager:
 
         self.threshold = self.select_threshold_from_pr(labels, probs)
 
-    def train_final(self) -> TestMetrics:
+    def train_final(self) -> tuple[TestMetrics, str]:
         assert (
             self.threshold is not None
         ), "Threshold must be tuned first. Please tune the threshold"
@@ -215,4 +215,4 @@ class TrainingManager:
             run_uri = f"runs:/{run.info.run_id}/model"
             mlflow.register_model(run_uri, "SpamClassifier")
 
-        return test_metrics
+        return test_metrics, run.info.run_id

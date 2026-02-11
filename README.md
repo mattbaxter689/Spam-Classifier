@@ -47,6 +47,10 @@ make environment
 make job
 ```
 
+## Additional Note
+
+You need to make sure that you have a compute cluster set up when submitting the job. You very well can submit something using local, but to get maximum performance, use a compute cluster as the target
+
 # Design Choice
 
 For this project, I wanted to make a more strict choice in terms of design of the model. When using any form of deep learning or machine learning in business
@@ -59,3 +63,4 @@ Going through this project, I have a few comments / issues surrounding this, mos
 * If I would create a compute environment again from scratch, I would use a custom docker image rather than what I had done. This would be much easier I feel than creating something, then using the ACR registry to create the environment again, etc. Many manual steps are needed here and just in general is frustrating.
 * Azure workspaces making use of mlflow 2.7.1 and using the stages rather than aliasing is slightly frustrating. Understandably, it has been around for some time and I don't see it changing to the new methods any time soon. Part of me does wish it was similar to GCP Vertex where workspaces can choose to spin up mlflow and specify it's version. Regardless, Mlflow being automatically integrated it a large helper
 * I am definitely getting more comfortable with torch at this point now which is good. It feels good. I always understood the theory, but the application of it definitely feels good. Torch lightning is also very handy to work with. The integrated metrics and logging is quite nice to have included in this
+* Lastly, getting access to a GPU on Azure felt near impossible. I was in communication with support constantly and still could not get access to a small instance given how popular LLM's are at this moment
